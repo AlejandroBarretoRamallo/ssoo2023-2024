@@ -44,11 +44,15 @@ drive_space()
  echo
  df
  echo
+ echo "${TEXT_ULINE} A continuacion se mostrara la mayor cantidad de memoria disponible${TEXT_RESET}"
+ echo
+ df | tr -s " " " " | sort -n -r -k4 | head -n1
 }
 
 
 home_space()
 {
+  echo
  if [ "$USER" != root ]; then
     echo "No tienes permisos de superusuario"
     echo "Este es el espacio que usa tu directorio:"
@@ -61,6 +65,7 @@ else
     du /home | sort -n -r
 fi
 }
+
 
 ##### Programa principal
 
