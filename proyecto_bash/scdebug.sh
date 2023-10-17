@@ -4,8 +4,7 @@ case "$1" in
     argumento_sto="$2"
     if [[ "$3" != "-nattch" ]]; then
       myprog="$3"
-      PID=$(ps -u | grep "$myprog"$ | tr -s " " " " | cut -f2 -d" ")
-      echo "$argumento_sto"
+      PID=$(ps -eo pid,comm | grep "$myprog" | sort -n -r | head -n1 | awk '{print $1}')
       if [ ! -d "./scdebug/" ];then
         mkdir "./scdebug/"
         mkdir "./scdebug/"$myprog""
@@ -13,13 +12,10 @@ case "$1" in
       if [ ! -d "./scdebug/"$myprog"" ];then 
         mkdir ./scdebug/"$myprog"
       fi
-      strace $argumento_sto -p $PID -o  ./scdebug/"$myprog"/trace_$UUID.txt&
+      strace $argumento_sto -o  ./scdebug/"$myprog"/trace_$UUID.txt $myprog &
     fi
     if [[ $3 == "-nattch" ]]; then
-      echo "a"
       myprog="$4"
-      PID=$(ps -u | grep "$myprog"$ | tr -s " " " " | cut -f2 -d" ")
-      echo "$argumento_sto"
       if [ ! -d "./scdebug/" ];then
        mkdir "./scdebug/"
        mkdir "./scdebug/"$myprog""
@@ -28,7 +24,7 @@ case "$1" in
       mkdir ./scdebug/"$myprog"
       fi
       PID=$(ps -u | tr  -s " " " " | sort -n -k10 -r | grep "$myprog"$ | head -n1 | cut -d " " -f2)
-      strace $argumento_sto -p $PID -o  ./scdebug/"$myprog"/trace_$UUID.txt&
+      strace -c -p $PID -o  ./scdebug/"$myprog"/trace_$UUID.txt &
     fi
   ;;
   * )
@@ -44,13 +40,13 @@ case "$1" in
     fi
     case "$#" in
       2)
-        strace -o ./scdebug/$myprog/trace_$UUID.txt "$myprog"&
+        strace -o ./scdebug/$myprog/trace_$UUID.txt "$myprog" &
       ;;
       3)
-        strace -o ./scdebug/$myprog/trace_$UUID.txt "$myprog" "$arg1"&
+        strace -o ./scdebug/$myprog/trace_$UUID.txt "$myprog" "$arg1" &
       ;;
       4)
-        strace -o ./scdebug/$myprog/trace_$UUID.txt "$myprog" "$arg1" "$arg2"&
+        strace -o ./scdebug/$myprog/trace_$UUID.txt "$myprog" "$arg1" "$arg2" &
       ;;
     esac
   ;;
