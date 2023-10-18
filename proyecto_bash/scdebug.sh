@@ -23,7 +23,7 @@ case "$1" in
       if [ ! -d "./scdebug/"$myprog"" ];then 
       mkdir ./scdebug/"$myprog"
       fi
-      PID=$(ps -u | tr  -s " " " " | sort -n -k10 -r | grep "$myprog"$ | head -n1 | cut -d " " -f2)
+      PID=$(ps -eo pid,comm | grep "$myprog" | sort -n -r | head -n1 | awk '{print $1}')
       strace -c -p $PID -o  ./scdebug/"$myprog"/trace_$UUID.txt &
     fi
   ;;
