@@ -1,7 +1,7 @@
 #variables
 ARGS_STO=
 NATTACH=
-UUID=$(uuidgen)
+UUID="123"
 PROG=
 PID=
 PROG_ARGV1=
@@ -9,6 +9,20 @@ PROG_ARGV2=
 KILL=
 PROCESO_TRAZADO=
 pid= 
+progs_nattch=
+progs_pattch=
+PATTCH=
+
+make_dir() {
+  if [ -d ./scdebug ]; then
+    if [ !-d ./scdebug/$PROG ]; then
+      mkdir ./scdebug/$PROG
+    fi
+  else 
+    mkdir ./scdebug
+    mkdir ./scdebug/$PROG
+  fi
+}
 
 PID_INFO() {
   echo "---------------------------------------------------------------------------------------------";
@@ -47,7 +61,19 @@ while [ -n "$1" ]; do
       echo "adios"
       ;;
     -nattch )
+      shift
+      while [ -n "$1" ] && [[ "$1" != -* ]]; do
+        progs_nattch+=($1)
+        shift
+      done 
       NATTACH="1"
+      ;;
+    -pattch )
+      shift
+      while [ -n $1 ] && [ "$1" != -* ]; do
+        progs_pattch+=($1)
+      done
+      PATTCH="1"
       ;;
     -k )
       KILL
@@ -57,26 +83,12 @@ while [ -n "$1" ]; do
       exit
       ;;
     * )
-      PROG=$1
-      if [ -e "./scdebug/" ]; then
-        if [ ! -e "./scdebug/$PROG/" ]; then
-          mkdir "./scdebug/$PROG/"
-        fi
-      else 
-        mkdir "./scdebug/"
-        mkdir "./scdebug/$PROG/"
+      if [ $NATTACH = "" ] && [ $PATTCH = "" ];then 
+      $PROG=$1
+      make_dir
+      
+      strace $ARGS_STO -o ./scdebug/$PROG/trade_$(uuidgen).txt $PROG
       fi
-      PID=$(ps -eo pid,comm | grep "$PROG" | sort -n -r | head -n1 | awk '{print $1}')
-      if [ "$NATTACH" = "1" ] ; then
-        if [ "$PID" = "" ] ; then
-          echo "No se ha encontrado el PID"
-        else
-          strace $ARGS_STO -p "$PID" -o "./scdebug/$PROG/trace_$UUID.txt" &
-        fi
-          else
-            strace $ARGS_STO -o "./scdebug/$PROG/trace_$UUID.txt" $PROG &
-          fi
-          ;;
     esac
     shift
   done
