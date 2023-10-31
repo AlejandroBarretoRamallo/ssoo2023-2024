@@ -1,7 +1,9 @@
+#!/bin/bash
+
 #variables
 ARGS_STO=
 NATTACH=
-UUID="123"
+UUID=
 PROG=
 PID=
 PROG_ARGV1=
@@ -12,42 +14,99 @@ pid=
 progs_nattch=
 progs_pattch=
 PATTCH=
+V=
+VALL=
+archivo=
 
 make_dir() {
-  if [ -d ./scdebug ]; then
-    if [ !-d ./scdebug/$PROG ]; then
+  if [ -d "./scdebug" ]; then
+    if [ ! -d "./scdebug/$PROG" ]; then
       mkdir ./scdebug/$PROG
     fi
   else 
-    mkdir ./scdebug
+    mkdir ./scdebug 2>/dev/null
     mkdir ./scdebug/$PROG
   fi
 }
 
 PID_INFO() {
-  echo "---------------------------------------------------------------------------------------------";
-  echo "      ESTOS SON LOS PID DE LOS PROGRAMAS QUE ESTAN SIENDO TRACEADOS";
-  echo "---------------------------------------------------------------------------------------------";
+  echo "----------------------------------------------------------------------------------------------------";
+  echo "      ESTOS SON LOS PID DE LOS PROGRAMAS QUE ESTAN SIENDO TRACEADOS Y DE QUIEN LO ESTA TRACEANDO";
+  echo "----------------------------------------------------------------------------------------------------";
   for pid in $(ps -u $USER -o pid); do
     if [ -e /proc/"$pid"/status ]; then
       PROCESO_TRAZADO=$(cat /proc/"$pid"/status | grep TracerPid: | awk '{print $2}')
       if [ "$PROCESO_TRAZADO" != "0" ]; then
+        ps -o pid,comm --no-header $pid | tr -s ' ' ' '
         ps -o pid,comm --no-header $PROCESO_TRAZADO | tr -s ' ' ' '
-        echo " "
+        echo "---------------------------------------------------------"
+      fi
+    fi
+  done
+}
+
+nattch() {
+  for prog in "${progs_nattch[@]}"; do
+    if [ "$prog" != "" ]; then 
+      PROG=$prog
+      make_dir
+      PID=$(ps -eo pid,comm | grep "$PROG" | sort -n -r | head -n1 | awk '{print $1}')
+      if [ "$ARGS_STO" != "" ]; then 
+        strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $PID &
+      else 
+        strace -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $PID &
+      fi
+    fi
+  done
+}
+
+pattch() {
+  for pid in "${progs_pattch[@]}"; do
+    if [ "$pid" != "" ]; then 
+      PROG=$(ps -u $USER -eo pid,comm | grep $pid | awk '{print $2}')
+      make_dir
+      if [ "$ARGS_STO" != "" ]; then 
+        strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $pid &
+      else 
+        strace -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $pid &
       fi
     fi
   done
 }
 
 KILL() {
+  
   for pid in $(ps -u $USER -o pid); do
     if [ -e /proc/$pid/status ]; then
       PROCESO_TRAZADO=$(cat /proc/$pid/status 2>/dev/null | grep TracerPid: | awk '{print $2}')
       if [ "$PROCESO_TRAZADO" != "0" ]; then
-        kill $PROCESO_TRAZADO 2>/dev/null
-        kill $pid 2>/dev/null  
+        kill -9 $PROCESO_TRAZADO 2>/dev/null
+        kill -9 $pid 2>/dev/null  
       fi
     fi
+  done
+}
+
+v() {
+  archivo=$(ls -c scdebug/$PROG | cut -d " " -f1 | head -n1)
+  time=$(ls -l scdebug/prueba.txt/ | grep $archivo | tr -s " " " " | awk '{print $8}')
+  echo "================COMMAND: $PROG======================="
+  echo "================TRACE_FILE: $archivo=================" 
+  echo "================TIME: $time=========================="
+  echo "Leyendo archivo de depuracion:"
+  cat scdebug/$PROG/$archivo
+  echo " "
+}
+
+vall() {
+  for archivo in $(ls -c scdebug/$PROG | cut -d " " -f1); do
+    time=$(ls -l scdebug/prueba.txt/ | grep $archivo | tr -s " " " " | awk '{print $8}')
+    echo "================COMMAND: $PROG======================="
+    echo "================TRACE_FILE: $archivo=================" 
+    echo "================TIME: $time=========================="
+    echo "Leyendo archivo de depuracion:"
+    cat scdebug/$PROG/$archivo
+    echo " "    
   done
 }
 
@@ -57,21 +116,32 @@ while [ -n "$1" ]; do
       shift
       ARGS_STO=$1
       ;;
-    --v | -vall )
-      echo "adios"
+    -v )
+      V="1"
+      shift
+      PROG=$1
+      ;;
+    -vall )
+      VALL="1"
+      shift
+      PROG=$1
       ;;
     -nattch )
+    echo "a"
       shift
       while [ -n "$1" ] && [[ "$1" != -* ]]; do
+        echo "aa"
         progs_nattch+=($1)
         shift
       done 
-      NATTACH="1"
+      NATTCH="1"
       ;;
     -pattch )
+      echo "b"
       shift
-      while [ -n $1 ] && [ "$1" != -* ]; do
+      while [ -n "$1" ] && [[ "$2" != -* ]]; do
         progs_pattch+=($1)
+        shift
       done
       PATTCH="1"
       ;;
@@ -83,14 +153,31 @@ while [ -n "$1" ]; do
       exit
       ;;
     * )
-      if [ $NATTACH = "" ] && [ $PATTCH = "" ];then 
-      $PROG=$1
-      make_dir
-      
-      strace $ARGS_STO -o ./scdebug/$PROG/trade_$(uuidgen).txt $PROG
+      if [ "$NATTACH" = "" ] && [ "$PATTCH" = "" ];then 
+        PROG=$1
+        make_dir
+        if [ "$ARGS_STO" != "" ];then 
+          strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG &
+        else 
+          strace -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG &
+        fi
       fi
     esac
     shift
   done
+  if [ "$V" != "" ]; then
+    v 
+  fi
+  if [ "$VALL" != "" ]; then
+    vall
+  fi
+  if [ "$NATTCH" != "" ]; then
+  echo "a"
+    # nattch
+  fi
+  if [ "$PATTCH" != "" ]; then
+  echo "b"
+    # pattch
+  fi
   PID_INFO
   exit 
