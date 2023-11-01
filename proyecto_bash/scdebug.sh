@@ -114,7 +114,6 @@ vall() {
 while [ -n "$1" ]; do
   case $1 in
     -sto )
-      echo "j"
       shift
       ARGS_STO=$1
       ;;
@@ -155,6 +154,7 @@ while [ -n "$1" ]; do
         shift
         while [ -n "$1" ]; do
           args_prog+=("$1")
+          # comprobar que no sea -nattch o -pattch (if $2 != .pattch && != -pattch)
           shift
         done
         make_dir
