@@ -17,6 +17,7 @@ PATTCH=
 V=
 VALL=
 archivo=
+args_prog=
 
 make_dir() {
   if [ -d "./scdebug" ]; then
@@ -24,7 +25,7 @@ make_dir() {
       mkdir ./scdebug/$PROG
     fi
   else 
-    mkdir ./scdebug 2>/dev/null
+    mkdir ./scdebug 
     mkdir ./scdebug/$PROG
   fi
 }
@@ -113,6 +114,7 @@ vall() {
 while [ -n "$1" ]; do
   case $1 in
     -sto )
+      echo "j"
       shift
       ARGS_STO=$1
       ;;
@@ -127,20 +129,15 @@ while [ -n "$1" ]; do
       PROG=$1
       ;;
     -nattch )
-    echo "a"
-      shift
-      while [ -n "$1" ] && [[ "$1" != -* ]]; do
-        echo "aa"
-        progs_nattch+=($1)
+      while [ -n "$1" ] && [[ $2 != -* ]]; do
+        progs_nattch+=($2)
         shift
       done 
       NATTCH="1"
       ;;
     -pattch )
-      echo "b"
-      shift
-      while [ -n "$1" ] && [[ "$2" != -* ]]; do
-        progs_pattch+=($1)
+      while [ -n "$1" ] && [[ $2 != -* ]]; do
+        progs_pattch+=($2)
         shift
       done
       PATTCH="1"
@@ -153,13 +150,18 @@ while [ -n "$1" ]; do
       exit
       ;;
     * )
-      if [ "$NATTACH" = "" ] && [ "$PATTCH" = "" ];then 
+      if [ "$NATTCH" = "" ] && [ "$PATTCH" = "" ];then 
         PROG=$1
+        shift
+        while [ -n "$1" ]; do
+          args_prog+=("$1")
+          shift
+        done
         make_dir
         if [ "$ARGS_STO" != "" ];then 
-          strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG &
+          strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG ${args_prog[@]} &
         else 
-          strace -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG &
+          strace -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG ${args_prog[@]} &
         fi
       fi
     esac
@@ -172,12 +174,10 @@ while [ -n "$1" ]; do
     vall
   fi
   if [ "$NATTCH" != "" ]; then
-  echo "a"
-    # nattch
+    nattch
   fi
   if [ "$PATTCH" != "" ]; then
-  echo "b"
-    # pattch
+    pattch
   fi
   PID_INFO
   exit 
