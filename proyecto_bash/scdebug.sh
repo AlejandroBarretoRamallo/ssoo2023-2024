@@ -151,10 +151,9 @@ while [ -n "$1" ]; do
     * )
       if [ "$NATTCH" = "" ] && [ "$PATTCH" = "" ];then 
         PROG=$1
-        shift
-        while [ -n "$1" ]; do
-          args_prog+=("$1")
-          # comprobar que no sea -nattch o -pattch (if $2 != .pattch && != -pattch)
+        while [ -n "$1" ] && [ "$2" != "-pattch" ] && [ "$2" != "-nattch" ]; do
+          args_prog+=("$2")
+          echo "$2"
           shift
         done
         make_dir
@@ -179,5 +178,6 @@ while [ -n "$1" ]; do
   if [ "$PATTCH" != "" ]; then
     pattch
   fi
+  sleep 2
   PID_INFO
   exit 
