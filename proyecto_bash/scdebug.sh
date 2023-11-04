@@ -90,25 +90,29 @@ KILL() {
 
 v() {
   archivo=$(ls -c scdebug/$PROG | cut -d " " -f1 | head -n1)
-  time=$(ls -l scdebug/prueba.txt/ | grep $archivo | tr -s " " " " | awk '{print $8}')
-  echo "================COMMAND: $PROG======================="
-  echo "================TRACE_FILE: $archivo=================" 
-  echo "================TIME: $time=========================="
-  echo "Leyendo archivo de depuracion:"
-  cat scdebug/$PROG/$archivo
-  echo " "
-}
-
-vall() {
-  for archivo in $(ls -c scdebug/$PROG | cut -d " " -f1); do
-    time=$(ls -l scdebug/prueba.txt/ | grep $archivo | tr -s " " " " | awk '{print $8}')
+  time=$(ls -l scdebug/$PROG/ | grep $archivo | tr -s " " " " | awk '{print $8}')
+  if [ "$PROG" != "" ]; then
     echo "================COMMAND: $PROG======================="
     echo "================TRACE_FILE: $archivo=================" 
     echo "================TIME: $time=========================="
     echo "Leyendo archivo de depuracion:"
     cat scdebug/$PROG/$archivo
-    echo " "    
-  done
+    echo " "
+  fi
+}
+
+vall() {
+  if [ "$PROG" != "" ]; then 
+    for archivo in $(ls -c scdebug/$PROG | cut -d " " -f1); do
+      time=$(ls -l scdebug/$PROG/ | grep $archivo | tr -s " " " " | awk '{print $8}')
+      echo "================COMMAND: $PROG======================="
+      echo "================TRACE_FILE: $archivo=================" 
+      echo "================TIME: $time=========================="
+      echo "Leyendo archivo de depuracion:"
+      cat scdebug/$PROG/$archivo
+      echo " "    
+    done
+  fi
 }
 
 while [ -n "$1" ]; do
@@ -120,12 +124,22 @@ while [ -n "$1" ]; do
     -v )
       V="1"
       shift
-      PROG=$1
+      while [ -n "$1" ];do 
+        if [ "$1" != "" ]; then
+          PROG+=($1)
+        fi
+        shift
+      done
       ;;
     -vall )
       VALL="1"
       shift
-      PROG=$1
+      while [ -n "$1" ];do 
+        if [ "$1" != "" ]; then
+          PROG+=($1)
+        fi
+        shift
+      done
       ;;
     -nattch )
       while [ -n "$1" ] && [[ $2 != -* ]]; do
@@ -167,10 +181,16 @@ while [ -n "$1" ]; do
     shift
   done
   if [ "$V" != "" ]; then
-    v 
+    for prog in "${PROG[@]}"; do
+      PROG=$prog
+      v 
+    done
   fi
   if [ "$VALL" != "" ]; then
-    vall
+    for prog in "${PROG[@]}"; do
+      PROG=$prog
+      vall
+    done
   fi
   if [ "$NATTCH" != "" ]; then
     nattch
