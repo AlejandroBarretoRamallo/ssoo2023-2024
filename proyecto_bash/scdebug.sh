@@ -19,6 +19,8 @@ VALL=
 archivo=
 args_prog=
 
+#funcioones
+
 make_dir() {
   if [ -d "./scdebug" ]; then
     if [ ! -d "./scdebug/$PROG" ]; then
@@ -114,6 +116,14 @@ vall() {
     done
   fi
 }
+
+usage() {
+  echo "Este scrpit monitoriza programas utilizando diferentes opciones como nattach, pattach si quieremos indicar directamente el pid"
+  echo "la opcion -k para terminar con los procesos que estan siendo monitorizados, -v y -vall para mostrar los archivos de depuracion,"
+  echo "y la opcion -sto para añadir argumentos al strace"
+}
+
+# main
 
 while [ -n "$1" ]; do
   case $1 in
