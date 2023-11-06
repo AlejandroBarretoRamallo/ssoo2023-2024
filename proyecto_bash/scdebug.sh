@@ -172,6 +172,21 @@ usage() {
   echo "y la opcion -sto para añadir argumentos al strace"
 }
 
+strace_sinPID() {
+  # $1 = indica si tiene pid o no  (0 si no tiene pid)
+  # $2 = arugmentos sto
+  # $3 = pid o programa
+  # $4 = ruta
+  # $5 = vacio o tiene argumentos del programa
+
+  if [ "$1" == "0" ];then 
+    strace $2 -o $4 $3 $5
+  fi
+  else 
+    strace $2 -o $4 $3 $5
+  fi
+}
+
 # main
 while [ -n "$1" ]; do
   case $1 in
