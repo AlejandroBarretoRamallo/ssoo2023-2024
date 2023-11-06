@@ -21,10 +21,19 @@ args_prog=
 
 #funcioones
 
+error_exit() {
+  echo "Error: $1"
+  exit 1
+}
+
+
 make_dir() {
   if [ -d "./scdebug" ]; then
     if [ ! -d "./scdebug/$PROG" ]; then
       mkdir ./scdebug/$PROG
+      if [[ $? != 0 ]]; then 
+        error "No se ha podido crear el directorio, o ya existe"
+      fi
     fi
   else 
     mkdir ./scdebug 
