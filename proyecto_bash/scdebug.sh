@@ -75,11 +75,7 @@ nattch() {
       if [ "$PID" == "" ]; then
         error_exit "No se ha encontrado el pid"
       fi
-      if [ "$ARGS_STO" != "" ]; then 
-        strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $PID &
-      else 
-        strace -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $PID &
-      fi
+      strace_ "1" "$ARGS_STO" "$PID"  "./scdebug/$PROG/trace_$(uuidgen).txt" &
     fi
   done
 }
@@ -89,11 +85,7 @@ pattch() {
     if [ "$pid" != "" ]; then 
       PROG=$(ps -u $USER -eo pid,comm | grep $pid | awk '{print $2}')
       make_dir
-      if [ "$ARGS_STO" != "" ]; then 
-        strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $pid &
-      else 
-        strace -o ./scdebug/$PROG/trace_$(uuidgen).txt -p $pid &
-      fi
+      strace_ "1" "$ARGS_STO"  "$pid" "./scdebug/$PROG/trace_$(uuidgen).txt" &
     fi
   done
 }
@@ -172,7 +164,7 @@ usage() {
   echo "y la opcion -sto para añadir argumentos al strace"
 }
 
-strace_sinPID() {
+strace_() {
   # $1 = indica si tiene pid o no  (0 si no tiene pid)
   # $2 = arugmentos sto
   # $3 = pid o programa
@@ -180,10 +172,9 @@ strace_sinPID() {
   # $5 = vacio o tiene argumentos del programa
 
   if [ "$1" == "0" ];then 
-    strace $2 -o $4 $3 $5 2>&1 | tee -a ./scdebug/errores.txt
-  fi
+    strace $2 -o $4 $3 $5 2>&1 | tee -a "$4"
   else 
-    strace $2 -o $4 $3 $5 2>&1 | tee -a ./scdebug/errores.txt
+    strace $2 -o $4 -p $3 2>&1 | tee -a "$4"
   fi
 }
 
@@ -240,15 +231,10 @@ while [ -n "$1" ]; do
         PROG=$1
         while [ -n "$1" ] && [ "$2" != "-pattch" ] && [ "$2" != "-nattch" ]; do
           args_prog+=("$2")
-          echo "$2"
           shift
         done
         make_dir
-        if [ "$ARGS_STO" != "" ];then 
-          strace $ARGS_STO -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG ${args_prog[@]} &
-        else 
-          strace -o ./scdebug/$PROG/trace_$(uuidgen).txt $PROG ${args_prog[@]} &
-        fi
+        strace_ "0" "$ARGS_STO" "$PROG" "./scdebug/$PROG/trace_$(uuidgen).txt" "${args_prog[@]}" &
       fi
     esac
   shift
