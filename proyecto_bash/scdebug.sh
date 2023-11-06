@@ -180,10 +180,10 @@ strace_sinPID() {
   # $5 = vacio o tiene argumentos del programa
 
   if [ "$1" == "0" ];then 
-    strace $2 -o $4 $3 $5
+    strace $2 -o $4 $3 $5 2>&1 | tee -a ./scdebug/errores.txt
   fi
   else 
-    strace $2 -o $4 $3 $5
+    strace $2 -o $4 $3 $5 2>&1 | tee -a ./scdebug/errores.txt
   fi
 }
 
