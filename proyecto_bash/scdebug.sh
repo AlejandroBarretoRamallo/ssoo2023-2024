@@ -31,18 +31,18 @@ make_dir() {
   if [ -d "./scdebug" ]; then
     if [ ! -d "./scdebug/$PROG" ]; then
       mkdir ./scdebug/$PROG
-      if [[ $? != 0 ]]; then 
-        error "No se ha podido crear el directorio, o ya existe"
+      if [ $? -ne 0 ]; then 
+        error_exit "No se ha podido crear el directorio, o ya existe"
       fi
     fi
   else 
     mkdir ./scdebug 
-    if [[ $? != 0 ]]; then 
-      error "No se ha podido crear el directorio, o ya existe"
+    if [ $? -ne 0 ]; then 
+      error_exit "No se ha podido crear el directorio, o ya existe"
     fi
     mkdir ./scdebug/$PROG
-    if [[ $? != 0 ]]; then 
-      error "No se ha podido crear el directorio, o ya existe"
+    if [ $? -ne 0 ]; then 
+      error_exit "No se ha podido crear el directorio, o ya existe"
     fi
   fi
 }
@@ -54,11 +54,11 @@ PID_INFO() {
   for pid in $(ps -u $USER -o pid); do
     if [ -e /proc/"$pid"/status ]; then
       PROCESO_TRAZADO=$(cat /proc/"$pid"/status | grep TracerPid: | awk '{print $2}')
-      if [[ $? != 0 ]]; then
+      if [ $? -ne 0 ] || [ "$PROCESO_TRAZADO" == "" ]; then
         error_exit "No se ha encontrado el directorio o el archivo"
       fi
       if [ "$PROCESO_TRAZADO" != "0" ]; then
-        ps -o pid,comm --no-header $pid | tr -s ' ' ' '
+        ps -o pid,comm --no-header $pid | tr -s ' ' ' ' 
         ps -o pid,comm --no-header $PROCESO_TRAZADO | tr -s ' ' ' '
         echo "---------------------------------------------------------"
       fi
@@ -84,6 +84,9 @@ pattch() {
   for pid in "${progs_pattch[@]}"; do
     if [ "$pid" != "" ]; then 
       PROG=$(ps -u $USER -eo pid,comm | grep $pid | awk '{print $2}')
+      if [ "$PROG" == "" ]; then
+        error_exit "No se ha encontrado el programa"
+      fi
       make_dir
       strace_ "1" "$ARGS_STO"  "$pid" "./scdebug/$PROG/trace_$(uuidgen).txt" &
     fi
@@ -91,20 +94,19 @@ pattch() {
 }
 
 KILL() {
+  echo "------------------------------------------------------------------------------"
+  echo "                        PROCESOS TERMINADOS"
+  echo "------------------------------------------------------------------------------"
   for pid in $(ps -u $USER -o pid); do
     if [ -e /proc/$pid/status ]; then
       PROCESO_TRAZADO=$(cat /proc/$pid/status 2>/dev/null | grep TracerPid: | awk '{print $2}')
-      if [[ $? != 0 ]];then 
+      if [ $? -ne 0 ];then 
         error_exit "No se ha encontado el archivo o el directorio"
       fi
       if [ "$PROCESO_TRAZADO" != "0" ]; then
-        kill -9 $PROCESO_TRAZADO 2>/dev/null
-        if [[ $? != 0 ]]; then
-          error_exit "No se pudo terminar el proceso o el proceso no existe"
-        fi
         kill -9 $pid 2>/dev/null  
-        if [[ $? != 0 ]]; then
-          error_exit "No s epudo terminar el proceso"
+        if [ $? -ne 0 ]; then
+          error_exit "No se pudo terminar el proceso"
         fi
       fi
     fi
@@ -113,7 +115,7 @@ KILL() {
 
 v() {
   archivo=$(ls -c scdebug/$PROG | cut -d " " -f1 | head -n1)
-  if [[ $? != 0 ]];then 
+  if [ $? -ne 0 ];then 
     error_exit "No se ha encontrado el archivo o el directorio"
   fi
   time=$(ls -l scdebug/$PROG/ | grep $archivo | tr -s " " " " | awk '{print $8}')
@@ -126,18 +128,17 @@ v() {
     echo "================TIME: $time=========================="
     echo "Leyendo archivo de depuracion:"
     cat scdebug/$PROG/$archivo
-    if [[ $? != 0 ]];then 
+    if [ $? -ne 0 ];then 
       error_exit "No se ha encontrado el archivo o el directorio"
     fi
     echo " "
   fi
-  exit 0
 }
 
 vall() {
   if [ "$PROG" != "" ]; then 
     for archivo in $(ls -c scdebug/$PROG | cut -d " " -f1); do
-      if [[ $? != 0 ]];then 
+      if [ $? -ne 0 ];then 
         error_exit "No se ha encontrado el archivo o el directorio"
       fi
       time=$(ls -l scdebug/$PROG/ | grep $archivo | tr -s " " " " | awk '{print $8}')
@@ -149,13 +150,12 @@ vall() {
       echo "================TIME: $time=========================="
       echo "Leyendo archivo de depuracion:"
       cat scdebug/$PROG/$archivo
-      if [[ $? != 0 ]];then 
+      if [ $? -ne 0 ];then 
         error_exit "No se ha encontrado el archivo o el directorio"
       fi
       echo " "    
     done
   fi
-  exit 0
 }
 
 usage() {
@@ -172,15 +172,31 @@ strace_() {
   # $5 = vacio o tiene argumentos del programa
 
   if [ "$1" == "0" ];then 
-    strace $2 -o $4 $3 $5 2>&1 | tee -a "$4"
+    strace $2 -o $4 $3 $5 2>&1 | tee -a "./scdebug/errores.txt" 1>/dev/null
   else 
-    strace $2 -o $4 -p $3 2>&1 | tee -a "$4"
+    strace $2 -o $4 -p $3 2>&1 | tee -a "./scdebug/errores.txt" 1>/dev/null
+  fi
+}
+
+strace_and_UUIDGEN() {
+  if ! command -v uuidgen 1>/dev/null;then
+    echo "El comando uuidgen no esta disponible"
+    exit 1
+  fi
+  if ! command -v strace 1>/dev/null; then
+    echo "El comando strace no esta disponible"
+    exit 1
   fi
 }
 
 # main
+strace_and_UUIDGEN
 while [ -n "$1" ]; do
   case $1 in
+    -h ) 
+      usage
+      exit 0
+      ;;
     -sto )
       shift
       ARGS_STO=$1
@@ -205,6 +221,9 @@ while [ -n "$1" ]; do
         shift
       done
       ;;
+    -k )
+      KILL
+      ;;
     -nattch )
       while [ -n "$1" ] && [[ $2 != -* ]]; do
         progs_nattch+=($2)
@@ -219,24 +238,15 @@ while [ -n "$1" ]; do
       done
       PATTCH="1"
       ;;
-    -k )
-      KILL
-      ;;
-    -h ) 
-      usage
-      exit 0
-      ;;
     * )
-      if [ "$NATTCH" = "" ] && [ "$PATTCH" = "" ];then 
-        PROG=$1
-        while [ -n "$1" ] && [ "$2" != "-pattch" ] && [ "$2" != "-nattch" ]; do
-          args_prog+=("$2")
-          shift
-        done
-        make_dir
-        strace_ "0" "$ARGS_STO" "$PROG" "./scdebug/$PROG/trace_$(uuidgen).txt" "${args_prog[@]}" &
-      fi
-    esac
+      PROG=$1
+      while [ -n "$1" ] && [ "$2" != "-pattch" ] && [ "$2" != "-nattch" ]; do
+        args_prog+=("$2")
+        shift
+      done
+      make_dir
+      strace_ "0" "$ARGS_STO" "$PROG" "./scdebug/$PROG/trace_$(uuidgen).txt" "${args_prog[@]}" &
+  esac
   shift
 done
 if [ "$V" != "" ]; then
@@ -244,12 +254,14 @@ if [ "$V" != "" ]; then
     PROG=$prog
     v 
   done
+  exit 0
 fi
 if [ "$VALL" != "" ]; then
   for prog in "${PROG[@]}"; do
     PROG=$prog
     vall
   done
+  exit 0
 fi
 if [ "$NATTCH" != "" ]; then
   nattch
@@ -257,6 +269,6 @@ fi
 if [ "$PATTCH" != "" ]; then
   pattch
 fi
-sleep 2
+sleep 1
 PID_INFO
 exit 0 
