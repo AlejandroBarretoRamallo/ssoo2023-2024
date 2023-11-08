@@ -104,6 +104,7 @@ KILL() {
         error_exit "No se ha encontado el archivo o el directorio"
       fi
       if [ "$PROCESO_TRAZADO" != "0" ]; then
+        kill -9 $PROCESO_TRAZADO 2>/dev/null
         kill -9 $pid 2>/dev/null  
       fi
     fi
