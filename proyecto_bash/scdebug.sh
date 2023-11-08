@@ -105,9 +105,6 @@ KILL() {
       fi
       if [ "$PROCESO_TRAZADO" != "0" ]; then
         kill -9 $pid 2>/dev/null  
-        if [ $? -ne 0 ]; then
-          error_exit "No se pudo terminar el proceso"
-        fi
       fi
     fi
   done
