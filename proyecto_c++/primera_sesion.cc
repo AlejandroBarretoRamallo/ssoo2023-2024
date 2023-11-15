@@ -1,9 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <experimental/scope>
-using std::experimental::scope_exit;
 
+using std::experimental::scope_exit;
+#include <experimental/scope>
 #include <sys/socket.h>
 #include <arpa/inet.h> // man htonl
 #include <sys/types.h>
