@@ -85,18 +85,22 @@ int main(int argc, char* argv[]) {
   std::expected<int, std::error_code> open_fd = open_file(nombre_archivo);
   if (!open_fd.has_value()) {
     std::cout << "Error al abrir el archivo\n";
+    close(socket_fd);
     return EXIT_FAILURE;
   }
   std::error_code read_error = read_file(*open_fd, buffer);
   if (read_error) {
     std::cout << "Error al leer el archivo: " << read_error.message() << std::endl;
+    close(socket_fd);
     return EXIT_FAILURE;
   }
   std::error_code send_error = send_to(*socket_fd, buffer, remote_address_opt.value());
   if (send_error) {
     std::cerr << "Error sendto: " << send_error.message() << "\n";
+    close(socket_fd);
     return EXIT_FAILURE;
   }
   std::cout << "Fin OK\n";
+  close(socket_fd);
   return EXIT_SUCCESS;
 }
