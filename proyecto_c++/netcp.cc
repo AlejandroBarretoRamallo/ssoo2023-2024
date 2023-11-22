@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
   }
   std::error_code send_error = send_to(*socket_fd, buffer, remote_address_opt.value());
   if (send_error) {
-    std::cerr << "Error sendto\n";
+    std::cerr << "Error sendto: " << send_error.message() << "\n";
     return EXIT_FAILURE;
   }
   std::cout << "Fin OK\n";
