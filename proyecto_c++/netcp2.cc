@@ -43,7 +43,8 @@ modo send
 
 
 modo recive
-
+-(globañ) bool flag = true
+funcion de interprtacion_signals() {----- flag == false}
 -crear socket
 -direccion remota sockkaddr_in
 -bind

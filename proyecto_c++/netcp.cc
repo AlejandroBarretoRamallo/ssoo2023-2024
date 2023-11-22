@@ -71,7 +71,9 @@ int main(int argc, char* argv[]) {
     std::cout << "Se debe indicar el nombre del archivo por línea de parámetros\n";
     return EXIT_SUCCESS;
   }
-  std::optional<sockaddr_in> remote_address_opt = make_ip_address("127.0.0.1", 8080);
+  std::string puerto = argv[3];
+  const int port = std::stoi(puerto);
+  std::optional<sockaddr_in> remote_address_opt = make_ip_address("127.0.0.1", port);
   if (!remote_address_opt.has_value()) {
     std::cout << "Hubo un error creando la direccion IP\n";
     return EXIT_FAILURE;
