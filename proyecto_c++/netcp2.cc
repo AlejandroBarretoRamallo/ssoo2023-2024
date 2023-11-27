@@ -10,20 +10,123 @@
 #include <expected>
 #include <system_error>
 
+std::error_code read_file(int fd, std::vector<uint8_t>& buffer) {
+  ssize_t bytes_read = read(fd, buffer.data(), buffer.size()); // leer datos del archivo y ponerlos en el buffer
+  if (bytes_read < 0) {
+    return std::error_code(errno, std::system_category()); //devolver el error
+  }
+  buffer.resize(bytes_read); // reajustar el tamaño del buffer
+  return std::error_code(0, std::system_category());    //devolver 0 en caso de exito
+}
+
+std::pair<int, std::error_code> send_to(int fd, const std::vector<uint8_t>& message, const sockaddr_in& address) {
+  int bytes_sent = sendto(fd, message.data(), message.size(), 0, reinterpret_cast<const sockaddr*>(&address), sizeof(address)); // mandar mensaje del buffer
+  if (bytes_sent < 0) {
+    return std::pair(-1, std::error_code(errno, std::system_category())); // devolver -1 en caso de error
+  }
+  return std::pair(bytes_sent, std::error_code(0, std::system_category())); // devolver el numero de bytes enviado en caso de exito
+}
+
+std::optional<sockaddr_in> make_ip_address(const std::optional<std::string> ip_address, uint16_t port=0) {
+  sockaddr_in local_address{}; // crear el sockkaddr_in
+  local_address.sin_family = AF_INET; //asignar dominio
+  if (ip_address == std::nullopt || ip_address->empty()) { // comprobar si se especifica una direccion
+    local_address.sin_addr.s_addr = htonl(INADDR_ANY); 
+  } else {
+    struct in_addr direccion_ip;
+    int error = inet_aton(ip_address->c_str(), &direccion_ip); // usar otro struct para hacer la comversion necesaria
+    if (error < 0) {
+      return std::nullopt;
+    }
+    local_address.sin_addr = direccion_ip; // asignar la direccion al socket
+  }
+  local_address.sin_port = htons(port); // asignar el puerto
+  return local_address;
+}
+
+using make_socket_result = std::expected<int, std::error_code>;
+make_socket_result make_socket() {
+  int fd_socket = socket(AF_INET, SOCK_DGRAM, 0); // crear socket
+  if (fd_socket < 0) {
+    return std::unexpected(std::error_code(errno, std::system_category())); // devolver error
+  }
+  return fd_socket; // devolver el descriptor del socket
+} 
+
+std::expected<int, std::error_code> open_file(const std::string& archivo) {
+  int fd = open(archivo.c_str(), O_RDONLY, 00007); // abrir archivo en modo lectura
+  if (fd == -1) {
+    return std::unexpected(std::error_code(errno, std::system_category())); // devolver el error
+  }
+  return fd; // devolver descriptor de archivo
+}
+
 bool CheckCorrectParameters(int argc) {  
-  if (argc < 2 || argc > 3) {
+  if (argc < 2 || argc > 3) {  // comprobar numero de parametros
     return false;
   }
   return true;
 }
 
-void help() {
+void help() { // mostrar ayuda
   std::cout << "Se debe pasar como parametro solo el nombre del archivo en caso de enviar, o -l y el nombre del archivo en caso de estar en modo recibir\n";
   return;
 }
 
-int recive_mode(std::string nombre_archivo) {
+std::error_code write_file(int open_fd, std::vector<u_int8_t> &buffer) {
+  ssize_t written_bytes = write(open_fd, buffer.data(), buffer.size());
+  if (written_bytes < 0) {
+    return std::error_code(errno, std::system_category());
+  }
+  return std::error_code(0, std::system_category());
+}
 
+int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun error
+  //recivir señales
+  std::expected<int, std::error_code> socket_fd = make_socket();  // crear el socket
+  if (!socket_fd.has_value()) {
+    std::cout << "Error en el socket: " << socket_fd.error().message() << "\n";
+    return -1;
+  }
+  std::optional<sockaddr_in> remote_address_opt = make_ip_address("127.0.0.1", 8080); //crear sockaddr_in
+  if (!remote_address_opt.has_value()) {
+    std::cout << "Hubo un error creando la direccion IP\n";
+    close(*socket_fd);
+    return -1;
+  }
+  int bind_error = bind(*socket_fd, reinterpret_cast<const sockaddr*>(&remote_address_opt.value()),sizeof(sockaddr_in)); // asignar al socket la direccion correspondiente
+  if (bind_error < 0) {
+    std::cout << "Error al relacionar la dirrecion ip con el socket\n";
+    close (*socket_fd);
+    return -1;
+  }
+  std::expected<int, std::error_code> open_fd = open_file(nombre_archivo); //abrir archivo
+  if (!open_fd.has_value()) {
+    std::cout << "Error al abrir el archivo " << open_fd.error().message();
+    close(*socket_fd);
+    return -1;
+  }
+  while (true) {
+    std::vector<uint8_t> buffer(1024);
+    ssize_t bytes_recieved = recv(*socket_fd, buffer.data(), buffer.size(), 0);  // guardar mensaje en el buffer
+    if (bytes_recieved < 0) { // comprobar errores
+      std::cout << "Error al recibir el mensaje en la funcion recv\n";
+      close(*socket_fd);
+      return -1;
+    }
+    if (bytes_recieved == 0) { // si ya no se reciben bytes se termino de leer el mensaje, por tanto la funcion termina devolviendo 0 puesto que no hubo error
+      return 0;
+    }
+    else {
+      buffer.resize(bytes_recieved);
+      std::error_code write_error = write_file(*open_fd, buffer);
+      if (write_error) {
+        std::cout << "Error al escribir en el archivo : " << write_error.message() << "\n";
+        return -1;
+      }
+    }
+  }
+  close(*socket_fd);
 }
 
 int send_mode(std::string nombre_archivo) {
@@ -37,8 +140,7 @@ int send_mode(std::string nombre_archivo) {
     std::cout << "Hubo un error creando la direccion IP\n";
     close(*socket_fd);
     return -1;
-  }
-  std::vector<uint8_t> buffer(1024); // crear buffer
+  } 
   std::expected<int, std::error_code> open_fd = open_file(nombre_archivo); //abrir archivo
   if (!open_fd.has_value()) {
     std::cout << "Error al abrir el archivo\n";
@@ -46,72 +148,24 @@ int send_mode(std::string nombre_archivo) {
     return -1;
   }
   while(true) {
-    buffer.resize(1024);
+    std::vector<uint8_t> buffer(1024);
     std::error_code read_error = read_file(*open_fd, buffer);
     if (read_error) {
       std::cout << "Error al leer el archivo: " << read_error.message() << std::endl;
       close(*socket_fd);
       return -1;
     }
-    int bytes_sent = send_to(*socket_fd, buffer, remote_address_opt.value());
-    if (bytes_sent < 0) {
-      std::cout << "Error al enviar el mensaje\n";
+    std::pair<int, std::error_code> send_error = send_to(*socket_fd, buffer, remote_address_opt.value());
+    if (send_error.first < 0) {
+      std::cout << "Error en el send to : " << send_error.second.message() << "\n";
       close(*socket_fd);
       return -1;
     }
-    if (bytes_sent == 0) {
+    if (send_error.first == 0) {
       close(*socket_fd);
       return 0;
     }
   }
-}
-
-std::error_code read_file(int fd, std::vector<uint8_t>& buffer) {
-  ssize_t bytes_read = read(fd, buffer.data(), buffer.size());
-  if (bytes_read < 0) {
-    return std::error_code(errno, std::system_category()); 
-  }
-  buffer.resize(bytes_read);
-  return std::error_code(0, std::system_category()); 
-}
-
-int send_to(int fd, const std::vector<uint8_t>& message, const sockaddr_in& address) {
-  int bytes_sent = sendto(fd, message.data(), message.size(), 0, reinterpret_cast<const sockaddr*>(&address), sizeof(address));
-  return bytes_sent;
-}
-
-std::optional<sockaddr_in> make_ip_address(const std::optional<std::string> ip_address, uint16_t port=0) {
-  sockaddr_in local_address{};
-  local_address.sin_family = AF_INET; 
-  if (ip_address == std::nullopt || ip_address->empty()) {
-    local_address.sin_addr.s_addr = htonl(INADDR_ANY);
-  } else {
-    struct in_addr direccion_ip;
-    int error = inet_aton(ip_address->c_str(), &direccion_ip);
-    if (error < 0) {
-      return std::nullopt;
-    }
-    local_address.sin_addr = direccion_ip;
-  }
-  local_address.sin_port = htons(port);
-  return local_address;
-}
-
-using make_socket_result = std::expected<int, std::error_code>;
-make_socket_result make_socket() {
-  int fd_socket = socket(AF_INET, SOCK_DGRAM, 0);
-  if (fd_socket < 0) {
-    return std::unexpected(std::error_code(errno, std::system_category()));
-  }
-  return fd_socket;
-} 
-
-std::expected<int, std::error_code> open_file(const std::string& archivo) {
-  int fd = open(archivo.c_str(), O_RDONLY, 00007);
-  if (fd == -1) {
-    return std::unexpected(std::error_code(errno, std::system_category()));
-  }
-  return fd;
 }
 
 int main(int argc, char *argv[]) {
@@ -129,7 +183,13 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
     std::string arg2 = argv[2];
-    recive_mode(arg2);   // programa en modo recibir
+    int recive_error = recive_mode(arg2);   // programa en modo recibir
+    if (recive_error < 0) {
+      std::cout << "Error en el modo recibir\n";
+      return EXIT_FAILURE;
+    }
+    std::cout << "Fin OK \n";
+    return EXIT_SUCCESS;
   }
   else {
     int error = send_mode(arg1);   // programa en modo enviar
@@ -137,6 +197,8 @@ int main(int argc, char *argv[]) {
       std::cout << "Fallo al enviar el archivo\n";
       return EXIT_FAILURE;
     }
+    std::cout << "Fin OK\n";
+    return EXIT_SUCCESS;
   }
 }
 /** si lo llamamos como en la primera practica enviar
