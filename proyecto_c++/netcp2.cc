@@ -9,6 +9,7 @@
 #include <optional>
 #include <expected>
 #include <system_error>
+#include <csignal>
 
 std::error_code read_file(int fd, std::vector<uint8_t>& buffer) {
   ssize_t bytes_read = read(fd, buffer.data(), buffer.size()); // leer datos del archivo y ponerlos en el buffer
@@ -53,8 +54,16 @@ make_socket_result make_socket() {
   return fd_socket; // devolver el descriptor del socket
 } 
 
-std::expected<int, std::error_code> open_file(const std::string& archivo) {
+std::expected<int, std::error_code> open_file_read(const std::string& archivo) {
   int fd = open(archivo.c_str(), O_RDONLY, 00007); // abrir archivo en modo lectura
+  if (fd == -1) {
+    return std::unexpected(std::error_code(errno, std::system_category())); // devolver el error
+  }
+  return fd; // devolver descriptor de archivo
+}
+
+std::expected<int, std::error_code> open_file_write(const std::string& archivo) {
+  int fd = open(archivo.c_str(),  O_WRONLY | O_CREAT | O_TRUNC, 0666); // abrir archivo en modo lectura
   if (fd == -1) {
     return std::unexpected(std::error_code(errno, std::system_category())); // devolver el error
   }
@@ -81,8 +90,16 @@ std::error_code write_file(int open_fd, std::vector<u_int8_t> &buffer) {
   return std::error_code(0, std::system_category());
 }
 
+void recive_signals(int sig_num) {
+  std::cout << "Se ha recibido la señal : " << sig_num << std::endl;
+  exit(sig_num);
+}
+
 int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun error
-  //recivir señales
+  std::signal(SIGINT, recive_signals); 
+  std::signal(SIGTERM, recive_signals); 
+  std::signal(SIGHUP, recive_signals); 
+  std::signal(SIGQUIT, recive_signals);
   std::expected<int, std::error_code> socket_fd = make_socket();  // crear el socket
   if (!socket_fd.has_value()) {
     std::cout << "Error en el socket: " << socket_fd.error().message() << "\n";
@@ -100,7 +117,7 @@ int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun 
     close (*socket_fd);
     return -1;
   }
-  std::expected<int, std::error_code> open_fd = open_file(nombre_archivo); //abrir archivo
+  std::expected<int, std::error_code> open_fd = open_file_write(nombre_archivo); //abrir archivo
   if (!open_fd.has_value()) {
     std::cout << "Error al abrir el archivo " << open_fd.error().message();
     close(*socket_fd);
@@ -141,7 +158,7 @@ int send_mode(std::string nombre_archivo) {
     close(*socket_fd);
     return -1;
   } 
-  std::expected<int, std::error_code> open_fd = open_file(nombre_archivo); //abrir archivo
+  std::expected<int, std::error_code> open_fd = open_file_read(nombre_archivo); //abrir archivo
   if (!open_fd.has_value()) {
     std::cout << "Error al abrir el archivo\n";
     close(*socket_fd);
