@@ -96,6 +96,7 @@ void recive_signals(int sig_num) {
 }
 
 int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun error
+  int recibidos = 0;
   std::signal(SIGINT, recive_signals); 
   std::signal(SIGTERM, recive_signals); 
   std::signal(SIGHUP, recive_signals); 
@@ -131,15 +132,16 @@ int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun 
       close(*socket_fd);
       return -1;
     }
-    if (bytes_recieved == 0) { // si ya no se reciben bytes se termino de leer el mensaje, por tanto la funcion termina devolviendo 0 puesto que no hubo error
-      return 0;
-    }
     else {
       buffer.resize(bytes_recieved);
       std::error_code write_error = write_file(*open_fd, buffer);
+      recibidos += buffer.size();
       if (write_error) {
         std::cout << "Error al escribir en el archivo : " << write_error.message() << "\n";
         return -1;
+      }
+      if (bytes_recieved < 1024) {
+        return 0;
       }
     }
   }
