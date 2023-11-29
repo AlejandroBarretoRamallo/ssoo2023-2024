@@ -141,6 +141,7 @@ int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun 
         return -1;
       }
       if (bytes_recieved < 1024) {
+        std::cout << recibidos;
         return 0;
       }
     }
