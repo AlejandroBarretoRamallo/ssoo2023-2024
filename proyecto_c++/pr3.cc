@@ -35,8 +35,9 @@ int main(int argc, char *argv[]) {
     close(fds[1]);
     // do 
     //nbytes = FUNCION READ-FILE PASANDO EL FDS[0]; BUFFER, 256
-    //write(fd, buffer, nbytes), aunque para mi seria el send to
+    //send to == write(fd, buffer, nbytes), aunque para mi seria el send to
     // }while nbytes > 0;
+    //todo al reves en el modo recibir
     int status;
     //Parent
     bool flag = true;
