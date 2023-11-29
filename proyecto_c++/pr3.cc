@@ -55,6 +55,7 @@ int main(int argc, char *argv[]) {
     //Child
     close(fds[0]);
     dup2(fds[1], STDOUT_FILENO);
+    // dup2(fds[0], STDIN_FILENO)
     std::vector<const char *> exec_args;
     for (auto &str : command_args) {
       exec_args.push_back(str.c_str());
