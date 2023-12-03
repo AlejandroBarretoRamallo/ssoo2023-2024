@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <string>
-
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -11,6 +10,8 @@
 #include <expected>
 #include <system_error>
 #include <csignal>
+#include <thread>
+#include <chrono>
 
 std::error_code read_file(int fd, std::vector<uint8_t>& buffer) {
   ssize_t bytes_read = read(fd, buffer.data(), buffer.size()); // leer datos del archivo y ponerlos en el buffer
@@ -97,7 +98,7 @@ void recive_signals(int sig_num) {
 }
 
 int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun error
-  int recibidos = 0;
+  using namespace std::chrono_literals;
   std::signal(SIGINT, recive_signals); 
   std::signal(SIGTERM, recive_signals); 
   std::signal(SIGHUP, recive_signals); 
@@ -133,19 +134,18 @@ int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun 
       close(*socket_fd);
       return -1;
     }
+    if (bytes_recieved == 0) { // si ya no se reciben bytes se termino de leer el mensaje, por tanto la funcion termina devolviendo 0 puesto que no hubo error
+      return 0;
+    }
     else {
       buffer.resize(bytes_recieved);
       std::error_code write_error = write_file(*open_fd, buffer);
-      recibidos += buffer.size();
       if (write_error) {
         std::cout << "Error al escribir en el archivo : " << write_error.message() << "\n";
         return -1;
       }
-      if (bytes_recieved < 1024) {
-        std::cout << recibidos;
-        return 0;
-      }
     }
+     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   close(*socket_fd);
 }
@@ -186,6 +186,7 @@ int send_mode(std::string nombre_archivo) {
       close(*socket_fd);
       return 0;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
