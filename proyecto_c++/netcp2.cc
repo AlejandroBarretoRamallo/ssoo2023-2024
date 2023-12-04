@@ -219,6 +219,13 @@ int main(int argc, char *argv[]) {
   std::signal(SIGQUIT, recive_signals);
   std::string direccion = getenv("NETCP_IP");
   std::string puerto = getenv("NETCP_PORT");
+  if (puerto == "") {
+    std::cerr << "Error al obtener el puerto desde las variables de entorno\n";
+    return EXIT_FAILURE;
+  }
+  if (direccion == "") {
+    std::cerr << "Error al obtener la direccion ip de las variables de entorno\n";
+  }
   int port = std::stoi(puerto);
   if (arg1 == "-l") {
     if (argc < 3) {            
