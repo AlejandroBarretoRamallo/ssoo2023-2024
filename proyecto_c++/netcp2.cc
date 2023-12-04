@@ -12,6 +12,7 @@
 #include <csignal>
 #include <thread>
 #include <chrono>
+#include <cstring>
 
 std::error_code read_file(int fd, std::vector<uint8_t>& buffer) {
   ssize_t bytes_read = read(fd, buffer.data(), buffer.size()); // leer datos del archivo y ponerlos en el buffer
@@ -93,22 +94,33 @@ std::error_code write_file(int open_fd, std::vector<u_int8_t> &buffer) {
 }
 
 void recive_signals(int sig_num) {
-  std::cout << "Se ha recibido la señal : " << sig_num << std::endl;
+  std::string señal = std::to_string(sig_num);
+  señal += "\n";
+  std::string mensaje_salida = "Se ha recibido la siguiente señal : ";
+  mensaje_salida += señal;
+  const char * mensaje = mensaje_salida.c_str();
+  write(STDOUT_FILENO, mensaje, strlen(mensaje));
   exit(sig_num);
 }
 
-int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun error
+std::string getenv_(const std::string& name){
+  char* value = getenv(name.c_str());
+  if (value) {
+    return std::string(value);
+  }
+  else {
+    return std::string();
+  }
+}
+
+int recive_mode(std::string nombre_archivo, std::string direccion, int puerto_) { // devuelve menos 1 si hubo algun error
   using namespace std::chrono_literals;
-  std::signal(SIGINT, recive_signals); 
-  std::signal(SIGTERM, recive_signals); 
-  std::signal(SIGHUP, recive_signals); 
-  std::signal(SIGQUIT, recive_signals);
   std::expected<int, std::error_code> socket_fd = make_socket();  // crear el socket
   if (!socket_fd.has_value()) {
     std::cout << "Error en el socket: " << socket_fd.error().message() << "\n";
     return -1;
   }
-  std::optional<sockaddr_in> remote_address_opt = make_ip_address("127.0.0.1", 8080); //crear sockaddr_in
+  std::optional<sockaddr_in> remote_address_opt = make_ip_address(direccion, puerto_); //crear sockaddr_in
   if (!remote_address_opt.has_value()) {
     std::cout << "Hubo un error creando la direccion IP\n";
     close(*socket_fd);
@@ -145,18 +157,19 @@ int recive_mode(std::string nombre_archivo) { // devuelve menos 1 si hubo algun 
         return -1;
       }
     }
-     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(7));
   }
   close(*socket_fd);
+  return 0;
 }
 
-int send_mode(std::string nombre_archivo) {
+int send_mode(std::string nombre_archivo, std::string direccion, int puerto_) {
   std::expected<int, std::error_code> socket_fd = make_socket();  // crear el socket
   if (!socket_fd.has_value()) {
     std::cout << "Error en el socket: " << socket_fd.error().message() << "\n";
     return -1;
   }
-  std::optional<sockaddr_in> remote_address_opt = make_ip_address("127.0.0.1", 8080); //crear sockaddr_in
+  std::optional<sockaddr_in> remote_address_opt = make_ip_address(direccion, puerto_); //crear sockaddr_in
   if (!remote_address_opt.has_value()) {
     std::cout << "Hubo un error creando la direccion IP\n";
     close(*socket_fd);
@@ -186,7 +199,7 @@ int send_mode(std::string nombre_archivo) {
       close(*socket_fd);
       return 0;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(7));
   }
 }
 
@@ -200,12 +213,19 @@ int main(int argc, char *argv[]) {
     help();                //mostrar ayuda
     return EXIT_SUCCESS;
   }
+  std::signal(SIGINT, recive_signals); 
+  std::signal(SIGTERM, recive_signals); 
+  std::signal(SIGHUP, recive_signals); 
+  std::signal(SIGQUIT, recive_signals);
+  std::string direccion = getenv("NETCP_IP");
+  std::string puerto = getenv("NETCP_PORT");
+  int port = std::stoi(puerto);
   if (arg1 == "-l") {
     if (argc < 3) {            
       return EXIT_FAILURE;
     }
     std::string arg2 = argv[2];
-    int recive_error = recive_mode(arg2);   // programa en modo recibir
+    int recive_error = recive_mode(arg2, direccion, port);   // programa en modo recibir
     if (recive_error < 0) {
       std::cout << "Error en el modo recibir\n";
       return EXIT_FAILURE;
@@ -214,7 +234,7 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
   }
   else {
-    int error = send_mode(arg1);   // programa en modo enviar
+    int error = send_mode(arg1, direccion, port);   // programa en modo enviar
     if (error < 0) {
       std::cout << "Fallo al enviar el archivo\n";
       return EXIT_FAILURE;
