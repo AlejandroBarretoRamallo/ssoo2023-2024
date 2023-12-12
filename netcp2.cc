@@ -203,6 +203,10 @@ int send_mode(std::string nombre_archivo, std::string direccion, int puerto_) {
   }
 }
 
+int execute_command(bool print_cout, bool print_error, std::string comando, std::string argumentos) {
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   if (!CheckCorrectParameters(argc)) {  // Comprobar numero de parametros
     std::cout << "Se han introducido parametros incorrectos\n";
@@ -230,14 +234,48 @@ int main(int argc, char *argv[]) {
   }
   int port = std::stoi(puerto);
   if (arg1 == "-l") {
+
     if (argc < 3) {            
       return EXIT_FAILURE;
     }
     std::string arg2 = argv[2];
-    int recive_error = recive_mode(arg2, direccion, port);   // programa en modo recibir
-    if (recive_error < 0) {
-      std::cout << "Error en el modo recibir\n";
-      return EXIT_FAILURE;
+    if (arg2 != "-1" && arg1 != "-2" && arg1 != "-c") {
+      int recive_error = recive_mode(arg2, direccion, port);   // programa en modo recibir
+      if (recive_error < 0) {
+        std::cout << "Error en el modo recibir\n";
+        return EXIT_FAILURE;
+      }
+    }
+    else {
+      std::string comando;
+      std::string argumentos_comando;
+      bool print_error = 0, print_cout = 1, mode_c = 0;
+      for(int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-1") {
+          continue;
+        }
+        if (arg== "-2") {
+          if (i == 1) {
+            print_cout = 0;
+          }
+          print_error = 1;
+        }
+        else if (arg == "-c") {
+          mode_c = 1;
+        }
+        else if (arg[0] != '-') {
+          comando = arg;
+        }
+        else {
+          argumentos_comando += arg;
+        }
+      }
+      if (!mode_c) {
+        std::cout << "Error: Si quieres mostrar la salida de los comandos debes incluir el argumento -c\n";
+        return EXIT_FAILURE;
+      }
+      int error_execute = execute_command(print_cout, print_error, comando, argumentos_comando);
     }
     std::cout << "Fin OK \n";
     return EXIT_SUCCESS;
@@ -279,8 +317,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Error: Si quieres mostrar la salida de los comandos debes incluir el argumento -c\n";
         return EXIT_FAILURE;
       }
-      std::cout << print_cout << " " << print_error << " " << comando << " " << argumentos_comando;
-      return 0;
+      int error_execute = execute_command(print_cout, print_error, comando, argumentos_comando);
     }
     std::cout << "Fin OK\n";
     return EXIT_SUCCESS; 
