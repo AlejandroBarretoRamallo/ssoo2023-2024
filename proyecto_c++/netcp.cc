@@ -13,6 +13,9 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include <atomic>
+
+std::atomic<bool> flag;
 
 std::error_code read_file(int fd, std::vector<uint8_t>& buffer) {
   ssize_t bytes_read = read(fd, buffer.data(), buffer.size()); // leer datos del archivo y ponerlos en el buffer
@@ -133,7 +136,7 @@ void recive_signals(int sig_num) {
   mensaje_salida += señal;
   const char * mensaje = mensaje_salida.c_str();
   write(STDOUT_FILENO, mensaje, strlen(mensaje));
-  exit(sig_num);
+  flag = true;
 }
 
 std::string getenv_(const std::string& name){
@@ -179,6 +182,10 @@ int recive_mode(std::string nombre_archivo, std::string direccion, int puerto_) 
       close(*socket_fd);
       return -1;
     }
+    if (flag) {
+      std::cout << "Se recivió una señal\n";
+      return 0;
+    }
     if (bytes_recieved == 0) { // si ya no se reciben bytes se termino de leer el mensaje, por tanto la funcion termina devolviendo 0 puesto que no hubo error
       return 0;
     }
@@ -190,7 +197,7 @@ int recive_mode(std::string nombre_archivo, std::string direccion, int puerto_) 
         return -1;
       }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   close(*socket_fd);
   return 0;
@@ -228,11 +235,16 @@ int send_mode(std::string nombre_archivo, std::string direccion, int puerto_) {
       close(*socket_fd);
       return -1;
     }
+    if (flag) {
+      close(*socket_fd);
+      std::cout << "Se recivió una señal\n";
+      return 0;
+    }
     if (send_error.first == 0) {
       close(*socket_fd);
       return 0;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
 }
 
@@ -246,6 +258,7 @@ int main(int argc, char *argv[]) {
     help();                //mostrar ayuda
     return EXIT_SUCCESS;
   }
+  flag = false;
   std::signal(SIGINT, recive_signals); 
   std::signal(SIGTERM, recive_signals); 
   std::signal(SIGHUP, recive_signals); 
